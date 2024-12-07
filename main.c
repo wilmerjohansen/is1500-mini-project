@@ -1,6 +1,5 @@
-#include <stdlib.h>
-#include <stdio.h>
 #include "ui.h"
+#include "analysis.h"
 
 extern void print(const char *);
 extern void print_dec(int x);
@@ -20,6 +19,10 @@ void handle_interrupt(void)
 /* Memory addresses (adjust based on your memory layout) */
 #define START_ADDRESS 0x2000 // The starting address where the image is uploaded
 
+int abs(int x) {
+    return (x < 0) ? -x : x;
+}
+
 /* This function prints memory content in hex */
 void print_memory_hex(unsigned int *address, unsigned int len)
 {
@@ -29,7 +32,6 @@ void print_memory_hex(unsigned int *address, unsigned int len)
         print("\n");
     }
 }
-
 
 /**
  * Apply a generic convolution kernel to the image data.
@@ -173,12 +175,7 @@ int main()
 
     // Step 1: Identify the BMP header signature (first 2 bytes)
     unsigned short headerSignature = (unsigned short)(*bmpFile & 0xFFFF);
-    if (headerSignature == 0x4D42)
-    { // 'BM' in little-endian
-        print("BMP file identified.\n");
-    }
-    else
-    {
+    if (headerSignature != 0x4D42) {
         print("Not a BMP file.\n");
         return -1;
     }
@@ -186,86 +183,85 @@ int main()
     // Step 2: Extract the pixel data offset from bytes at offset 0x0A
     unsigned int pixelArrayOffset = (*((unsigned int *)(((char *)bmpFile) + 0x0A)));
 
-    print("Pixel array starts at offset: ");
-    print_hex32(pixelArrayOffset);
-    print("\n");
+    unsigned int fileSize = *((unsigned int*)(((char*)bmpFile) + 2));
 
     // Step 3: Extract the image width as a signed 32-bit integer
     int width = *((int *)(((char *)bmpFile) + 0x12));
-    print("Width: ");
-    print_dec(width);
-    print("\n");
 
     // Step 4: Extract the image height as a signed 32-bit integer
     int height = *((int *)(((char *)bmpFile) + 0x16));
-    print("Height: ");
-    print_dec(height);
-    print("\n");
 
     // Step 5: Extract the color depth (bits per pixel) from offset 0x2A
     unsigned short colorDepth = *((unsigned short *)(((char *)bmpFile) + 0x1C));
-    print("Color depth (bits per pixel): ");
-    print_dec(colorDepth);
-    print("\n");
 
     // Step 6: Jump to the pixel array using the offset
     unsigned int *pixelArray = (unsigned int *)(((char *)bmpFile) + pixelArrayOffset);
 
-      // Display the UI for kernel selection
-int selected_kernel = 0;  // Variable to store user selection
+    // Display the UI for kernel selection
+    int last_selected_kernel = 0;
+    int selected_kernel = 0;  // Variable to store user selection
+    int chosen_kernel = 0;  // Variable to store user selection
 
     int running = 1; // Flag to control the loop
 
     // Display the menu once to inform the user of the options
-display_menu(0); // Display the menu for the user
+    display_menu(0, fileSize, width, height, colorDepth); // Display the menu for the user
 
-while (running) {
-    selected_kernel = get_user_selection(); // Get the user selection from switches
+    while (running) {
+        selected_kernel = get_user_selection(); // Get the user selection from switches
 
-    if (selected_kernel != 0) {
-        // If the user made a valid selection
-        running = 0; // Set the running flag to 0 to exit the loop
+        if (selected_kernel != last_selected_kernel) {
+            display_menu(selected_kernel, fileSize, width, height, colorDepth);
+        }
+
+        chosen_kernel = get_user_chosen(); // Get the user selection from switches
+
+        if (chosen_kernel != 0) {
+            // If the user made a valid selection
+            running = 0; // Set the running flag to 0 to exit the loop
+        }
+
+        last_selected_kernel = selected_kernel;
     }
-}
 
-// Handle the kernel application based on the user's selection
-switch (selected_kernel) {
-    case 1: // Edge Detection 3x3
-        print("Edge Detection 3x3 selected.\n");
-        apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, edgeDetection3x3, 3);
-        break;
-    case 2: // Edge Detection 5x5
-        print("Edge Detection 5x5 selected.\n");
-        apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, edgeDetection5x5, 5);
-        break;
-    case 3: // Blur 3x3
-        print("Blur 3x3 selected.\n");
-        apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, blur3x3, 3);
-        break;
-    case 4: // Blur 5x5
-        print("Blur 5x5 selected.\n");
-        apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, blur5x5, 5);
-        break;
-    case 5: // Sharpen 3x3
-        print("Sharpen 3x3 selected.\n");
-        apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, sharpen3x3, 3);
-        break;
-    case 6: // Sharpen 5x5
-        print("Sharpen 5x5 selected.\n");
-        apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, sharpen5x5, 5);
-        break;
-    case 7: // Emboss 3x3
-        print("Emboss 3x3 selected.\n");
-        apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, emboss3x3, 3);
-        break;
-    case 8: // Emboss 5x5
-        print("Emboss 5x5 selected.\n");
-        apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, emboss5x5, 5);
-        break;
-    default:
-        print("Invalid selection. Please try again.\n");
-        break;
-}
+    // Handle the kernel application based on the user's selection
+    switch (selected_kernel) {
+        case 1: // Edge Detection 3x3
+            print("Edge Detection 3x3 selected.\n");
+            apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, edgeDetection3x3, 3);
+            break;
+        case 2: // Edge Detection 5x5
+            print("Edge Detection 5x5 selected.\n");
+            apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, edgeDetection5x5, 5);
+            break;
+        case 3: // Blur 3x3
+            print("Blur 3x3 selected.\n");
+            apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, blur3x3, 3);
+            break;
+        case 4: // Blur 5x5
+            print("Blur 5x5 selected.\n");
+            apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, blur5x5, 5);
+            break;
+        case 5: // Sharpen 3x3
+            print("Sharpen 3x3 selected.\n");
+            apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, sharpen3x3, 3);
+            break;
+        case 6: // Sharpen 5x5
+            print("Sharpen 5x5 selected.\n");
+            apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, sharpen5x5, 5);
+            break;
+        case 7: // Emboss 3x3
+            print("Emboss 3x3 selected.\n");
+            apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, emboss3x3, 3);
+            break;
+        case 8: // Emboss 5x5
+            print("Emboss 5x5 selected.\n");
+            apply_kernel((unsigned char *)pixelArray, width, abs(height), colorDepth / 8, emboss5x5, 5);
+            break;
+        default:
+            print("Invalid selection. Please try again.\n");
+            break;
+    }
 
     print("Done!");
     return 0;

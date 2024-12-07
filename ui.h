@@ -1,5 +1,3 @@
-#include <stdio.h>
-
 /* Memory-mapped I/O addresses */
 #define SWITCHES_BASE_ADDRESS 0x4000010
 #define BUTTON_BASE_ADDRESS 0x40000d0
@@ -23,11 +21,38 @@ typedef enum {
 } KernelOption;
 
 /* Function prototypes */
-void display_menu(int current_selection);
+void display_menu(int current_selection, unsigned int size, int width, int height, unsigned short colorDepth);
 KernelOption get_user_selection();
+KernelOption get_user_chosen();
+void cls();
+
+void cls() {
+    print("\033[2J");
+    print("\033[H");
+}
 
 /* Display the menu */
-void display_menu(int current_selection) {
+void display_menu(int current_selection, unsigned int size, int width, int height, unsigned short colorDepth) {
+    cls();
+
+    print("BMP file loaded with\n");
+
+    print("Size: ");
+    print_dec(size);
+    print("\n");
+
+    print("Width: ");
+    print_dec(width);
+    print("\n");
+
+    print("Height: ");
+    print_dec(width);
+    print("\n");
+
+    print("Color depth: ");
+    print_dec(colorDepth);
+    print("\n");
+
     const char* kernel_names[] = {
         "Edge Detection 3x3",
         "Edge Detection 5x5",
@@ -42,11 +67,14 @@ void display_menu(int current_selection) {
     print("\n--- Kernel Selection Menu ---\n");
     for (int i = 0; i < sizeof(kernel_names) / sizeof(kernel_names[0]); i++) {
         if (i + 1 == current_selection) {
-            print("> "); // Highlight the current selection
+            print("<"); // Highlight the current selection
         } else {
-            print("  ");
+            print(" ");
         }
         print(kernel_names[i]);
+        if (i + 1 == current_selection) {
+            print(">"); // Highlight the current selection
+        }
         print("\n");
     }
     print("----------------------------\n");
@@ -55,11 +83,19 @@ void display_menu(int current_selection) {
 /* Get user selection */
 KernelOption get_user_selection() {
     volatile unsigned int* switches = (unsigned int*)SWITCHES_BASE_ADDRESS;
-    volatile unsigned int* button = (unsigned int*)BUTTON_BASE_ADDRESS;
     volatile unsigned int* leds = (unsigned int*)LEDS_BASE_ADDRESS;
 
     int selection = *switches & 0xF; // Read the lower 4 bits from switches (values 0-15)
     *leds = selection;              // Display the current selection on LEDs
+
+    return selection; // No valid selection yet
+}
+
+KernelOption get_user_chosen() {
+    volatile unsigned int* switches = (unsigned int*)SWITCHES_BASE_ADDRESS;
+    volatile unsigned int* button = (unsigned int*)BUTTON_BASE_ADDRESS;
+
+    int selection = *switches & 0xF; // Read the lower 4 bits from switches (values 0-15)
 
     if (*button & 0x1) {            // Button press confirms selection
         return (KernelOption)selection;
