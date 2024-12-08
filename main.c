@@ -179,7 +179,7 @@ int main()
 
         chosen_kernel = get_user_chosen(); // Get the user selection from switches
 
-        if (chosen_kernel != 0) {
+        if (chosen_kernel != -1 && chosen_kernel > 0) {
             // If the user made a valid selection
             break;
         }
@@ -205,7 +205,7 @@ int main()
 
         chosen_kernel_2 = get_user_chosen(); // Get the user selection from switches
 
-        if (chosen_kernel_2 != 0) {
+        if (chosen_kernel_2 != -1) {
             // If the user made a valid selection
             break;
         }

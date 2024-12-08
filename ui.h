@@ -110,7 +110,7 @@ KernelOption get_user_chosen() {
         return (KernelOption)selection;
     }
 
-    return 0; // No valid selection yet
+    return -1; // No valid selection yet
 }
 
 int get_button_unpress() {
