@@ -21,7 +21,7 @@ typedef enum {
 } KernelOption;
 
 /* Function prototypes */
-void display_menu(int current_selection, unsigned int size, int width, int height, unsigned short colorDepth);
+void display_menu(int none_allowed, int current_selection, unsigned int size, int width, int height, unsigned short colorDepth);
 KernelOption get_user_selection();
 KernelOption get_user_chosen();
 void cls();
@@ -32,7 +32,7 @@ void cls() {
 }
 
 /* Display the menu */
-void display_menu(int current_selection, unsigned int size, int width, int height, unsigned short colorDepth) {
+void display_menu(int none_allowed, int current_selection, unsigned int size, int width, int height, unsigned short colorDepth) {
     cls();
 
     print("BMP file loaded with\n");
@@ -46,7 +46,7 @@ void display_menu(int current_selection, unsigned int size, int width, int heigh
     print("\n");
 
     print("Height: ");
-    print_dec(width);
+    print_dec(height);
     print("\n");
 
     print("Color depth: ");
@@ -54,6 +54,7 @@ void display_menu(int current_selection, unsigned int size, int width, int heigh
     print("\n");
 
     const char* kernel_names[] = {
+        "None (second choice)",
         "Edge Detection 3x3",
         "Edge Detection 5x5",
         "Blur 3x3",
@@ -64,17 +65,25 @@ void display_menu(int current_selection, unsigned int size, int width, int heigh
         "Emboss 5x5"
     };
 
-    print("\n--- Kernel Selection Menu ---\n");
+    if (none_allowed == 0) {
+        print("\n--- Kernel Selection Menu ---\n");
+        print("--- Pick the first kernel ---\n");
+    } else {
+        print("\n--- Kernel Selection Menu ---\n");
+        print("--- Pick the second kernel --\n");
+    }
+
     for (int i = 0; i < sizeof(kernel_names) / sizeof(kernel_names[0]); i++) {
+        if (none_allowed == 0 && i == 0)
+            continue;
         if (i + 1 == current_selection) {
             print("<"); // Highlight the current selection
         } else {
             print(" ");
         }
         print(kernel_names[i]);
-        if (i + 1 == current_selection) {
+        if (i + 1 == current_selection)
             print(">"); // Highlight the current selection
-        }
         print("\n");
     }
     print("----------------------------\n");
@@ -102,4 +111,13 @@ KernelOption get_user_chosen() {
     }
 
     return 0; // No valid selection yet
+}
+
+int get_button_unpress() {
+    volatile unsigned int* button = (unsigned int*)BUTTON_BASE_ADDRESS;
+
+    if ((*button & 0x1) == 0)
+        return 1;
+
+    return 0;
 }
